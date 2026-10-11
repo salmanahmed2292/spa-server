@@ -4,7 +4,7 @@ import { deleteImage } from "../config/cloudinary.js";
 import Report from "../models/Report.js";
 import { businessDate } from "../utils/businessDate.js";
 
-const imageFields = ["trip1Image", "trip2Image", "trip3Image"];
+const imageFields = ["trip1Image", "trip2Image", "trip3Image", "trip4Image", "trip5Image"];
 
 const run = async () => {
   const today = businessDate();
@@ -79,6 +79,8 @@ const run = async () => {
           trip1Image: null,
           trip2Image: null,
           trip3Image: null,
+          trip4Image: null,
+          trip5Image: null,
         },
       },
     );

@@ -1,14 +1,18 @@
+import mongoose from "mongoose";
 import connectDatabase from "../config/db.js";
 import ensureSuperAdmin from "../config/superAdmin.js";
 import { app } from "../index.js";
 
-let databaseReady;
+let superAdminEnsured = false;
 
 const prepareDatabase = async () => {
-  if (!databaseReady) {
-    databaseReady = connectDatabase().then(() => ensureSuperAdmin());
+  if (mongoose.connection.readyState !== 1) {
+    await connectDatabase();
   }
-  await databaseReady;
+  if (!superAdminEnsured) {
+    await ensureSuperAdmin();
+    superAdminEnsured = true;
+  }
 };
 
 export default async (req, res) => {

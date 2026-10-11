@@ -3,13 +3,14 @@ import multer from "multer";
 import auth from "../middleware/auth.js";
 import Report from "../models/Report.js";
 import { deleteImage, uploadImage } from "../config/cloudinary.js";
-import { asyncHandler, isValidReportDate, reportFields, sendSuccess } from "../utils/global.js";
+import { checkAndRunMidnightCleanup, performMidnightImageCleanup } from "../services/dailyReports.js";
+import { asyncHandler, reportFields, sendSuccess } from "../utils/global.js";
 
 const router = Router();
-const imageFields = new Set(["trip1Image", "trip2Image", "trip3Image"]);
+const imageFields = new Set(["trip1Image", "trip2Image", "trip3Image", "trip4Image", "trip5Image"]);
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, callback) => {
     if (!file.mimetype.startsWith("image/")) {
       const error = new Error("Only image files can be uploaded.");
@@ -20,22 +21,25 @@ const upload = multer({
   },
 });
 
+// Public cron endpoint for Vercel Cron or scheduled trigger at midnight (12:00 AM)
+router.get(
+  "/cron/midnight-cleanup",
+  asyncHandler(async (_req, res) => {
+    const result = await performMidnightImageCleanup();
+    return sendSuccess(res, result, 200, "Midnight image cleanup completed.");
+  }),
+);
+
 router.use(auth);
 
 router.get(
   "/",
-  asyncHandler(async (req, res) => {
-    const filter = {};
-    if (req.query.date) {
-      if (!isValidReportDate(req.query.date)) {
-        const error = new Error("Date must use YYYY-MM-DD format.");
-        error.status = 400;
-        throw error;
-      }
-      filter.date = req.query.date;
-    }
+  asyncHandler(async (_req, res) => {
+    // Check and trigger midnight image cleanup if a new day has arrived
+    await checkAndRunMidnightCleanup();
 
-    const reports = await Report.find(filter).sort({ date: -1, createdAt: -1 });
+    // Return permanent records sorted by AMO, UC, and Vehicle No
+    const reports = await Report.find().sort({ amo: 1, uc: 1, vehicleNo: 1 });
     return sendSuccess(res, reports);
   }),
 );
@@ -44,15 +48,15 @@ router.post(
   "/",
   asyncHandler(async (req, res) => {
     const fields = reportFields(req.body);
-    fields.date ||= new Date().toISOString().slice(0, 10);
-    if (!isValidReportDate(fields.date)) {
-      const error = new Error("Date must use YYYY-MM-DD format.");
-      error.status = 400;
+    const existing = await Report.findOne({ owner: req.user.id, vehicleNo: fields.vehicleNo });
+    if (existing) {
+      const error = new Error(`Vehicle ${fields.vehicleNo} already exists in database.`);
+      error.status = 409;
       throw error;
     }
 
     const report = await Report.create({ ...fields, owner: req.user.id });
-    return sendSuccess(res, report, 201, "Report created.");
+    return sendSuccess(res, report, 201, "Vehicle record created.");
   }),
 );
 
@@ -60,11 +64,6 @@ router.patch(
   "/:id",
   asyncHandler(async (req, res) => {
     const fields = reportFields(req.body);
-    if (fields.date !== undefined && !isValidReportDate(fields.date)) {
-      const error = new Error("Date must use YYYY-MM-DD format.");
-      error.status = 400;
-      throw error;
-    }
 
     const report = await Report.findOneAndUpdate(
       { _id: req.params.id },
@@ -76,7 +75,7 @@ router.patch(
       error.status = 404;
       throw error;
     }
-    return sendSuccess(res, report, 200, "Report updated.");
+    return sendSuccess(res, report, 200, "Vehicle record updated.");
   }),
 );
 
@@ -91,11 +90,11 @@ router.delete(
     }
 
     await Promise.all(
-      [report.trip1Image, report.trip2Image, report.trip3Image]
+      [report.trip1Image, report.trip2Image, report.trip3Image, report.trip4Image, report.trip5Image]
         .filter(Boolean)
         .map(({ publicId }) => deleteImage(publicId).catch(() => undefined)),
     );
-    return sendSuccess(res, { id: report.id }, 200, "Report deleted.");
+    return sendSuccess(res, { id: report.id }, 200, "Vehicle record deleted.");
   }),
 );
 

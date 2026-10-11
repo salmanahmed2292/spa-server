@@ -7,7 +7,7 @@ import connectDatabase from "./config/db.js";
 import ensureSuperAdmin from "./config/superAdmin.js";
 import authRoutes from "./routes/auth.js";
 import reportRoutes from "./routes/reports.js";
-import { runDailyReportMaintenance } from "./services/dailyReports.js";
+import { checkAndRunMidnightCleanup, performMidnightImageCleanup } from "./services/dailyReports.js";
 import { millisecondsUntilNextBusinessDay } from "./utils/businessDate.js";
 
 const app = express();
@@ -20,8 +20,8 @@ const allowedOrigins = [
 const scheduleDailyReportMaintenance = () => {
   const timer = setTimeout(() => {
     scheduleDailyReportMaintenance();
-    runDailyReportMaintenance().catch((error) => {
-      console.error("Daily report maintenance failed:", error.message);
+    performMidnightImageCleanup().catch((error) => {
+      console.error("Daily midnight image cleanup failed:", error.message);
     });
   }, millisecondsUntilNextBusinessDay());
   timer.unref();
@@ -80,7 +80,7 @@ const start = async () => {
   await connectDatabase();
   await ensureSuperAdmin();
   scheduleDailyReportMaintenance();
-  await runDailyReportMaintenance();
+  await checkAndRunMidnightCleanup();
   app.listen(port, () => console.log(`API listening on http://localhost:${port}`));
 };
 

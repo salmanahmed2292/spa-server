@@ -8,7 +8,7 @@ const imageSchema = new mongoose.Schema(
 const reportSchema = new mongoose.Schema(
   {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+    date: { type: String, default: () => new Date().toISOString().slice(0, 10) },
     amo: { type: String, required: true, trim: true, maxlength: 150 },
     uc: { type: String, required: true, trim: true, maxlength: 50 },
     tcp: { type: String, trim: true, maxlength: 100, default: "" },
@@ -18,11 +18,13 @@ const reportSchema = new mongoose.Schema(
     trip1Image: { type: imageSchema, default: null },
     trip2Image: { type: imageSchema, default: null },
     trip3Image: { type: imageSchema, default: null },
+    trip4Image: { type: imageSchema, default: null },
+    trip5Image: { type: imageSchema, default: null },
   },
   { timestamps: true },
 );
 
-reportSchema.index({ owner: 1, date: 1, vehicleNo: 1 }, { unique: true });
+reportSchema.index({ owner: 1, vehicleNo: 1 }, { unique: true });
 
 const Report = mongoose.model("Report", reportSchema);
 
