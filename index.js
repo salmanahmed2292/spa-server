@@ -25,6 +25,14 @@ const scheduleDailyReportMaintenance = () => {
     });
   }, millisecondsUntilNextBusinessDay());
   timer.unref();
+
+  // Periodic heartbeat every 60 seconds to guarantee instant midnight cleanup as soon as the day changes in Pakistan
+  const interval = setInterval(() => {
+    checkAndRunMidnightCleanup().catch((error) => {
+      console.error("Minute ticker midnight cleanup error:", error.message);
+    });
+  }, 60 * 1000);
+  interval.unref();
 };
 
 app.disable("x-powered-by");

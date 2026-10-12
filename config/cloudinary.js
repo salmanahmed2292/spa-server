@@ -39,3 +39,13 @@ export const deleteImage = (publicId) => {
   if (!publicId) return Promise.resolve();
   return getCloudinary().uploader.destroy(publicId, { resource_type: "image" });
 };
+
+export const deleteAllTripImages = async () => {
+  try {
+    return await getCloudinary().api.delete_resources_by_prefix("spa-trip-reports/images/");
+  } catch (error) {
+    console.error("Cloudinary bulk folder delete failed:", error.message);
+    return null;
+  }
+};
+

@@ -1,12 +1,15 @@
 import AppConfig from "../models/AppConfig.js";
 import Report from "../models/Report.js";
-import { deleteImage } from "../config/cloudinary.js";
+import { deleteImage, deleteAllTripImages } from "../config/cloudinary.js";
 import { businessDate } from "../utils/businessDate.js";
 
 const imageFields = ["trip1Image", "trip2Image", "trip3Image", "trip4Image", "trip5Image"];
 
 export const performMidnightImageCleanup = async (cleanupDate = businessDate()) => {
   console.log(`Starting midnight Cloudinary image cleanup for date ${cleanupDate}...`);
+
+  // Purge entire Cloudinary trip reports images folder
+  await deleteAllTripImages();
 
   // Find all reports having at least one trip image
   const reportsWithImages = await Report.find({
