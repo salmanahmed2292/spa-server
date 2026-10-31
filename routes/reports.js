@@ -61,6 +61,36 @@ router.post(
 );
 
 router.patch(
+  "/amo/update",
+  asyncHandler(async (req, res) => {
+    const { oldAmo, newAmo, tcp } = req.body;
+    if (!oldAmo || !newAmo) {
+      const error = new Error("Both old and new AMO names are required.");
+      error.status = 400;
+      throw error;
+    }
+    const trimmedOld = String(oldAmo).trim();
+    const trimmedNew = String(newAmo).trim();
+    if (!trimmedNew) {
+      const error = new Error("New AMO name cannot be empty.");
+      error.status = 400;
+      throw error;
+    }
+    const updateQuery = { amo: trimmedNew };
+    if (tcp !== undefined && typeof tcp === "string" && tcp.trim()) {
+      updateQuery.tcp = tcp.trim();
+    }
+    const result = await Report.updateMany({ amo: trimmedOld }, { $set: updateQuery });
+    return sendSuccess(
+      res,
+      { modifiedCount: result.modifiedCount, oldAmo: trimmedOld, newAmo: trimmedNew },
+      200,
+      `AMO updated for ${result.modifiedCount} vehicle records.`,
+    );
+  }),
+);
+
+router.patch(
   "/:id",
   asyncHandler(async (req, res) => {
     const fields = reportFields(req.body);
